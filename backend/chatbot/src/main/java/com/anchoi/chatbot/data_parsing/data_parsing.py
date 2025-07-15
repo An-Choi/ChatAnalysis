@@ -8,6 +8,7 @@ UPLOAD_DIR = "uploads"
 def processing_text_file(file_path, proccessed):
     NotImplemented
 ##csv파일 전처리
+##adsf
 def processing_csv_file(file_path, processed):
     NotImplemented
 
