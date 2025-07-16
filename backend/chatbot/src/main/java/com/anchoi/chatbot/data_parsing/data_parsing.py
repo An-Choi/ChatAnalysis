@@ -23,6 +23,8 @@ def processing_text_file(file_path, processed):
     
     curr_date = None
     prev_sender = None
+    full_msg = ''
+    prev_time = None
 
     for line in lines: 
         line = line.strip()
@@ -36,7 +38,7 @@ def processing_text_file(file_path, processed):
             curr_date = f"{int(year):04d}-{int(month):02d}-{int(date):02d}"
             continue
 
-
+        
         #메세지 탐지 및 처리
         match_msg = msg_pattern.match(line)
         if match_msg:
@@ -52,17 +54,33 @@ def processing_text_file(file_path, processed):
                 hour += 12
             elif am_pm == "오전" and hour == 12:
                 hour = 0
-
             time = f"{curr_date} {hour}:{sec}"
-            processed.append({
-                "sender":sender,
-                "message":msg,
-                "time":time,
-                "trainer": train_name == sender
-            })
 
-            prev_sender = sender
-    
+            #메세지 누적
+            if sender == prev_sender:
+                full_msg += '\n' + msg
+            else:  
+                #보낸사람이 달라져서 메세지 저장
+                if prev_sender is not None:
+                    processed.append({
+                        "sender":prev_sender,
+                        "message":full_msg,
+                        "time":prev_time,
+                        "trainer": train_name == sender
+                    })
+                #사람 변경
+                full_msg = msg
+                prev_time = time
+                prev_sender = sender
+
+    #마지막 메세지 저장
+    if prev_sender and full_msg:
+        processed.append({
+            "sender": prev_sender,
+            "message": full_msg,
+            "time": prev_time,
+            "trainer": train_name == prev_sender
+        })
         
 
 
