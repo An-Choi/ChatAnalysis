@@ -44,6 +44,12 @@ def processing_csv_file(file_path, processed):
                 'Message': current_message
             }])
             new_df = pd.concat([new_df, new_row], ignore_index=True)
+            processed.append({
+                "sender": current_user,
+                "message": current_message,
+                "time": current_date,
+                "trainer": current_user == target
+            })
             current_date = row['Date']
             current_user = row['User']
             current_message = row['Message']
@@ -61,6 +67,7 @@ def processing_csv_file(file_path, processed):
     print(df.head(5))
     print(target)
     print(new_df.head(5))
+    print(processed[:3])
 
 ##실행 함수
 def execute_files(filename):
