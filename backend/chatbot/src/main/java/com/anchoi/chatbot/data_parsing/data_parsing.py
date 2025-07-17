@@ -14,6 +14,10 @@ def processing_csv_file(file_path, processed):
     ##파일 읽기
     df = pd.read_csv(file_path)
 
+    ##초 단위 제거
+    df['Date'] = pd.to_datetime(df['Date'])
+    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d %H:%M')
+
     ##파일 이름에서 학습 대상 이름 추출
     ##한글 비교 시 유니코드 정규화 통일 후 비교
     filename = os.path.splitext(os.path.basename(file_path))[0]
@@ -26,8 +30,7 @@ def processing_csv_file(file_path, processed):
             break
     
     ##한 사용자가 연속으로 메세지를 보낸 경우 하나의 row로 처리
-    ##비어있는 new_df 생성 후 처리된 row를 추가
-    new_df = pd.DataFrame(columns=['Date', 'User', 'Message'])
+    ##processed 안에 dictionary 형식으로 저장
     current_user = None
     current_message = ""
     current_date = ""
@@ -38,12 +41,6 @@ def processing_csv_file(file_path, processed):
             current_user = row['User']
             current_message += row['Message']
         elif current_user != row['User']:
-            new_row = pd.DataFrame([{
-                'Date': current_date,
-                'User': current_user,
-                'Message': current_message
-            }])
-            new_df = pd.concat([new_df, new_row], ignore_index=True)
             processed.append({
                 "sender": current_user,
                 "message": current_message,
@@ -57,16 +54,16 @@ def processing_csv_file(file_path, processed):
             current_message += "\n" + row['Message']
 
     if current_user is not None:
-        new_row = pd.DataFrame([{
-            'Date': current_date,
-            'User': current_user,
-            'Message': current_message
-        }])
-        new_df = pd.concat([new_df, new_row], ignore_index=True)
+        processed.append({
+                "sender": current_user,
+                "message": current_message,
+                "time": current_date,
+                "trainer": current_user == target
+            })
 
+    ##테스트용 프린트
     print(df.head(5))
     print(target)
-    print(new_df.head(5))
     print(processed[:3])
 
 ##실행 함수
