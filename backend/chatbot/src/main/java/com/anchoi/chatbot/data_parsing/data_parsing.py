@@ -2,6 +2,8 @@ import os
 import csv
 import json
 import re
+import pandas as pd
+import unicodedata
 
 UPLOAD_DIR = "uploads"
 
@@ -85,10 +87,61 @@ def processing_text_file(file_path, processed):
 
 
 ##csv파일 전처리
-##adsf
 def processing_csv_file(file_path, processed):
-    ##asdf
-    NotImplemented
+    ##파일 읽기
+    df = pd.read_csv(file_path)
+
+    ##초 단위 제거
+    df['Date'] = pd.to_datetime(df['Date'])
+    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d %H:%M')
+
+    ##파일 이름에서 학습 대상 이름 추출
+    ##한글 비교 시 유니코드 정규화 통일 후 비교
+    filename = os.path.splitext(os.path.basename(file_path))[0]
+    filename_nfc = unicodedata.normalize('NFC', filename)
+    users = df['User'].astype(str).str.strip().apply(lambda x: unicodedata.normalize('NFC', x))
+    target = None
+    for user in users:
+        if user in filename_nfc:
+            target = user
+            break
+    
+    ##한 사용자가 연속으로 메세지를 보낸 경우 하나의 row로 처리
+    ##processed 안에 dictionary 형식으로 저장
+    current_user = None
+    current_message = ""
+    current_date = ""
+
+    for index, row in df.iterrows():
+        if current_user is None:
+            current_date = row['Date']
+            current_user = row['User']
+            current_message += row['Message']
+        elif current_user != row['User']:
+            processed.append({
+                "sender": current_user,
+                "message": current_message,
+                "time": current_date,
+                "trainer": current_user == target
+            })
+            current_date = row['Date']
+            current_user = row['User']
+            current_message = row['Message']
+        else:
+            current_message += "\n" + row['Message']
+
+    if current_user is not None:
+        processed.append({
+                "sender": current_user,
+                "message": current_message,
+                "time": current_date,
+                "trainer": current_user == target
+            })
+
+    ##테스트용 프린트
+    print(df.head(5))
+    print(target)
+    print(processed[:3])
 
 ##실행 함수
 def execute_files(filename):
@@ -118,5 +171,5 @@ if __name__ == "__main__":
     result = []
     for filename in os.listdir(UPLOAD_DIR):
         result = execute_files(filename)
-
+    
     ##json 파일 백엔드 서버로 보내기
