@@ -1,11 +1,13 @@
 import os
-import csv
-import json
 import re
 import pandas as pd
 import unicodedata
 
-UPLOAD_DIR = "uploads"
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.abspath(os.path.join(
+    CURRENT_DIR,
+    "../../../../../resources/uploads"
+))
 
 ##텍스트 파일 전처리
 def processing_text_file(file_path, processed):
@@ -122,7 +124,7 @@ def processing_csv_file(file_path, processed):
                 "sender": current_user,
                 "message": current_message,
                 "time": current_date,
-                "trainer": current_user == target
+                "trainer": current_user != target
             })
             current_date = row['Date']
             current_user = row['User']
@@ -135,17 +137,13 @@ def processing_csv_file(file_path, processed):
                 "sender": current_user,
                 "message": current_message,
                 "time": current_date,
-                "trainer": current_user == target
+                "trainer": current_user != target
             })
-
-    ##테스트용 프린트
-    print(df.head(5))
-    print(target)
-    print(processed[:3])
 
 ##실행 함수
 def execute_files(filename):
     file_path = os.path.join(UPLOAD_DIR, filename)
+    print(file_path)
     processed = []
 
     #파일 없는 경우 (오류 처리)
@@ -168,8 +166,19 @@ def execute_files(filename):
 
 #main 함수
 if __name__ == "__main__":
-    result = []
+    results = []
     for filename in os.listdir(UPLOAD_DIR):
-        result = execute_files(filename)
+        results = execute_files(filename)
     
+    txt = ""
+    for result in results:
+        if result['trainer']:
+            txt += "나: "
+        else:
+            txt += "챗봇: "
+        txt += result['message']
+        txt += "\n"
+
+    txt += "</s>"
+    print(txt)
     ##json 파일 백엔드 서버로 보내기

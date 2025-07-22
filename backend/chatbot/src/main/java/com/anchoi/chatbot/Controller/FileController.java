@@ -18,7 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/files")
 public class FileController {
-    private static final String UPLOAD_DIR = "uploads/";
+    private static final String UPLOAD_DIR = "backend/chatbot/src/main/resources/uploads/";
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
