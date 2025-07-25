@@ -8,6 +8,10 @@ UPLOAD_DIR = os.path.abspath(os.path.join(
     CURRENT_DIR,
     "../../../../../resources/uploads"
 ))
+SAVE_DIR = os.path.abspath(os.path.join(
+    CURRENT_DIR,
+    "../../../../../resources/processed_data"
+))
 
 ##텍스트 파일 전처리
 def processing_text_file(file_path, processed):
@@ -171,14 +175,17 @@ if __name__ == "__main__":
         results = execute_files(filename)
     
     txt = ""
+    flag = 1
     for result in results:
         if result['trainer']:
             txt += "나: "
+            txt += result['message']
         else:
             txt += "챗봇: "
-        txt += result['message']
+            txt += result['message']
+            txt += "\n</s>"
         txt += "\n"
-
-    txt += "</s>"
-    print(txt)
+    file_path = os.path.join(SAVE_DIR, 'processed.txt')
+    with open(file_path, 'a') as file:
+        file.write(txt)
     ##json 파일 백엔드 서버로 보내기
