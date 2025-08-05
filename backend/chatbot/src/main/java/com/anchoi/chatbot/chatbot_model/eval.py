@@ -1,6 +1,12 @@
 import torch
 from transformers import PreTrainedTokenizerFast, GPT2LMHeadModel
+from fastapi import FastAPI
+from pydantic import BaseModel
 
+app = FastAPI()
+
+class ChatRequest(BaseModel):
+    message: str
 
 ME_TKN = "<me>" #user
 YOU_TKN = "<you>" #bot
@@ -27,8 +33,9 @@ model.eval()
 
 
 # 챗봇 응답 생성 함수
-def generate_response(user_input, max_len=50):
-    input_text = f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
+@app.post("/evaluate")
+def generate_response(req: ChatRequest, max_len=50):
+    input_text = f"{ME_TKN}{req.message}{SENT}{YOU_TKN}"
     input_ids = tokenizer.encode(input_text, return_tensors="pt").to(device)
 
     # 모델 생성
@@ -54,13 +61,13 @@ def generate_response(user_input, max_len=50):
     #     response = decoded
 
     response = decoded
-    return response
+    return {"response": response}
 
 
 ### 예시
-while True:
-    user_input = input("You: ")
-    if user_input.lower() in ["exit"]:
-        break
-    response = generate_response(user_input)
-    print("Bot:", response)
+# while True:
+#     user_input = input("You: ")
+#     if user_input.lower() in ["exit"]:
+#         break
+#     response = generate_response(user_input)
+#     print("Bot:", response)

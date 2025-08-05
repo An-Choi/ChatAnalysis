@@ -1,3 +1,5 @@
 .DS_Store
 /myenv
 /.vscode
+/trained_test
+/saved_models
