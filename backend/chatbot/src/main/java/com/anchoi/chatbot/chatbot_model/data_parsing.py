@@ -174,18 +174,20 @@ if __name__ == "__main__":
     for filename in os.listdir(UPLOAD_DIR):
         results = execute_files(filename)
     
-    txt = ""
-    flag = 1
-    for result in results:
-        if result['trainer']:
-            txt += "나: "
-            txt += result['message']
-        else:
-            txt += "챗봇: "
-            txt += result['message']
-            txt += "\n</s>"
-        txt += "\n"
-    file_path = os.path.join(SAVE_DIR, 'processed.txt')
-    with open(file_path, 'a') as file:
-        file.write(txt)
-    ##json 파일 백엔드 서버로 보내기
+    if not results[0]["trainer"]:
+        results = results[1:]
+
+    me_messages = [result["message"] for result in results if result["trainer"]]
+    you_messages = [result["message"] for result in results if not result["trainer"]]
+
+    min_len = min(len(me_messages), len(you_messages))
+    pairs = {
+        "me": me_messages[:min_len],
+        "you": you_messages[:min_len]
+    }
+
+    df = pd.DataFrame(pairs)
+    print(df)
+    
+    file_path = os.path.join(SAVE_DIR, 'processed.csv')
+    df.to_csv(file_path, index=False)
