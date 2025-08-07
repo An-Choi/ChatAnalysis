@@ -47,7 +47,7 @@ def generate_response(req: ChatRequest, max_len=50):
             eos_token_id=tokenizer.eos_token_id,
             do_sample=True,       
             top_k=50,
-            top_p=0.95,
+            top_p=0.9,
             temperature=0.9,
             no_repeat_ngram_size=3
         )
@@ -55,13 +55,15 @@ def generate_response(req: ChatRequest, max_len=50):
     decoded = tokenizer.decode(output[0], skip_special_tokens=False)
 
     # YOU_TKN 이후부터 출력 추출
-    # if YOU_TKN in decoded:
-    #     response = decoded.split(YOU_TKN)[-1].split(EOS)[0].strip()
-    # else:
-    #     response = decoded
+    if YOU_TKN in decoded:
+        response = decoded.split(YOU_TKN)[-1].split(EOS)[0].strip()
+    else:
+        response = decoded
 
-    response = decoded
-    return {"response": response}
+    for special in [ME_TKN, YOU_TKN, SENT, EOS, BOS, PAD, MASK, "<unk>"]:
+        response = response.replace(special, "")
+
+    return response
 
 
 ### 예시
