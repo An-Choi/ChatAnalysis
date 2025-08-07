@@ -63,7 +63,7 @@ def generate_response(req: ChatRequest, max_len=50):
     for special in [ME_TKN, YOU_TKN, SENT, EOS, BOS, PAD, MASK, "<unk>"]:
         response = response.replace(special, "")
 
-    return response
+    return {"response": response}
 
 
 ### 예시
