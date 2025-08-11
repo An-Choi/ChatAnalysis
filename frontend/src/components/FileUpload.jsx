@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import './FileUpload.css'
+
 
 function FileUpload() {
     const [file, setFile] = useState(null);
@@ -25,11 +27,17 @@ function FileUpload() {
     };
 
     return (
-        <div>
-            <h2>파일 업로드</h2>
-            <input type="file" onChange={handleFileChange} />
-            <button onClick={handleUpload}>업로드</button>
-            <p>{message}</p>
+        <div className="upload-container">
+            <div className="upload-header">파일 업로드 📁</div>
+            <div className="upload-form">
+                <input className="upload-input" type="file" onChange={handleFileChange} />
+                <button className="upload-btn" onClick={handleUpload}>업로드</button>
+            </div>
+            {message && (
+                <div className={`upload-message ${message === "파일 업로드 실패" ? "error" : "success"}`}>
+                    {message}
+                </div>
+            )}
         </div>
     );
 }

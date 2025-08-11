@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import "./ChatBot.css";
 
 function ChatBot() {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([]);
+    const chatBoxRef = useRef(null);
 
     const sendMessage = async (e) => {
         e.preventDefault();
-        if (!input) return;
+        if (!input.trim()) return;
         const userMessage = input;
         setInput('');
         setMessages([...messages, { from: 'user', text: userMessage }]);
@@ -19,17 +21,29 @@ function ChatBot() {
         }
     };
 
+    useEffect(() => {
+        if (chatBoxRef.current)
+            chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+    }, [messages]);
+
     return (
-        <div>
-            <div style={{ minHeight: 160, border: '1px solid #ccc', marginBottom: 10, padding: 10 }}>
+        <div className="chat-container">
+            <div className="chat-header">챗봇 💬</div>
+            <div className="chat-messages" ref={chatBoxRef}>
                 {messages.map((m, i) => (
-                    <div key={i} style={{ textAlign: m.from === 'user' ? 'right' : 'left' }}>
-                        <b>{m.from === 'user' ? '나' : '챗봇'}:</b> {m.text}
+                    <div key={i} className={`message ${m.from}`}>
+                        {m.text}
                     </div>
                 ))}
             </div>
-            <form onSubmit={sendMessage}>
-                <input value={input} onChange={e => setInput(e.target.value)} />
+            <form className="chat-input" onSubmit={sendMessage}>
+                <input
+                    type="text"
+                    placeholder="메시지를 입력하세요..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    autoComplete="off"
+                />
                 <button type="submit">전송</button>
             </form>
         </div>
