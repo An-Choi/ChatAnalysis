@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 import unicodedata
+import sys
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_DIR = os.path.abspath(os.path.join(
@@ -170,9 +171,15 @@ def execute_files(filename):
 
 #main 함수
 if __name__ == "__main__":
-    results = []
-    for filename in os.listdir(UPLOAD_DIR):
-        results = execute_files(filename)
+    # results = []
+    # for filename in os.listdir(UPLOAD_DIR):
+    #     results = execute_files(filename)
+    
+    if len(sys.argv) < 2:
+        sys.exit(1)
+
+    filename = sys.argv[1]
+    results = execute_files(filename)
     
     if not results[0]["trainer"]:
         results = results[1:]

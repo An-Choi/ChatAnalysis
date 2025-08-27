@@ -28,7 +28,7 @@ public class ChatbotController {
 
     private String getPythonResponse(String message) {
         RestTemplate restTemplate = new RestTemplate();
-        String url = "http://localhost:8000/evaluate"; //python 서버 주소
+        String url = "http://python-server:8000/evaluate"; //python 서버 주소
 
         Map<String, String> request = new HashMap<>();
         request.put("message", message);

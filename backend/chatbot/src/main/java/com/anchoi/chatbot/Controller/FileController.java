@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/files")
 public class FileController {
     private static final String UPLOAD_DIR = "backend/chatbot/src/main/resources/uploads/";
+    private static final String PYTHON_PATH = "backend/chatbot/src/main/java/com/anchoi/chatbot/chatbot_model/data_parsing.py";
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
@@ -30,10 +31,29 @@ public class FileController {
             if(!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
-            Path filePath = uploadPath.resolve(file.getOriginalFilename());
+            String originalFilename = file.getOriginalFilename();
+            Path filePath = uploadPath.resolve(originalFilename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return ResponseEntity.ok("파일이 업로드되었습니다.");
-        } catch (IOException e) {
+
+            //데이터 전처리 실행
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                "python",
+                Paths.get(PYTHON_PATH).toAbsolutePath().toString(),
+                originalFilename
+            );
+
+            processBuilder.inheritIO();
+            Process process = processBuilder.start();
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0) {
+                return ResponseEntity.ok("파일이 업로드되었습니다.");
+            } else {
+                return ResponseEntity.status(500).body("파일 전처리 중 오류가 발생했습니다.");
+            }
+
+            
+        } catch (IOException | InterruptedException e) {
             return ResponseEntity.status(500).body("파일 업로드 중 오류가 발생했습니다.");
         }
     }
