@@ -1,18 +1,19 @@
+from fastapi import FastAPI, APIRouter
+from pydantic import BaseModel
 import os
 import re
 import pandas as pd
 import unicodedata
 import sys
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.abspath(os.path.join(
-    CURRENT_DIR,
-    "../../../../../resources/uploads"
-))
-SAVE_DIR = os.path.abspath(os.path.join(
-    CURRENT_DIR,
-    "../../../../../resources/processed_data"
-))
+processing_router = APIRouter()
+
+
+UPLOAD_DIR = "/app/uploads"
+SAVE_DIR = "/app/processed_data"
+
+class ProcessRequest(BaseModel):
+    filename: str
 
 ##텍스트 파일 전처리
 def processing_text_file(file_path, processed):
@@ -169,32 +170,48 @@ def execute_files(filename):
 
     return processed
 
-#main 함수
-if __name__ == "__main__":
-    # results = []
-    # for filename in os.listdir(UPLOAD_DIR):
-    #     results = execute_files(filename)
-    
-    if len(sys.argv) < 2:
-        sys.exit(1)
+@processing_router.post("/process")
+def process_file(req: ProcessRequest):
+    print("process called!") 
+    try:
+        filename = req.filename
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        print(f"전처리 요청: {file_path}")
+        processed = []
 
-    filename = sys.argv[1]
-    results = execute_files(filename)
-    
-    if not results[0]["trainer"]:
-        results = results[1:]
+        if filename.endswith('.txt'):
+            processing_text_file(file_path, processed)
+        elif filename.endswith('.csv'):
+            processing_csv_file(file_path, processed)
+        else:
+            return {"status":"error", "message":"지원하지 않는 파일 형식"}
 
-    me_messages = [result["message"] for result in results if result["trainer"]]
-    you_messages = [result["message"] for result in results if not result["trainer"]]
+        df = pd.DataFrame(processed)
+        out_file = os.path.join(SAVE_DIR, 'processed.csv')
+        df.to_csv(out_file, index=False)
 
-    min_len = min(len(me_messages), len(you_messages))
-    pairs = {
-        "me": me_messages[:min_len],
-        "you": you_messages[:min_len]
-    }
+        return {"status": "success", "output": out_file}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+    # filename = req.filename
+    # results = execute_files(filename)
 
-    df = pd.DataFrame(pairs)
-    print(df)
-    
-    file_path = os.path.join(SAVE_DIR, 'processed.csv')
-    df.to_csv(file_path, index=False)
+    # if not results[0]["trainer"]:
+    #     results = results[1:]
+
+    # me_messages = [result["message"] for result in results if result["trainer"]]
+    # you_messages = [result["message"] for result in results if not result["trainer"]]
+
+    # min_len = min(len(me_messages), len(you_messages))
+    # pairs = {
+    #     "me": me_messages[:min_len],
+    #     "you": you_messages[:min_len]
+    # }
+
+    # df = pd.DataFrame(pairs)
+    # out_file = os.path.join(SAVE_DIR, 'processed.csv')
+    # df.to_csv(out_file, index=False)
+
+    # return {"status": "success", "output": out_file}
