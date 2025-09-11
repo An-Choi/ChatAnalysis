@@ -33,14 +33,16 @@ koGPT2_TOKENIZER = PreTrainedTokenizerFast.from_pretrained(
     mask_token=MASK,
 )
 
+special_tokens_dict = {"additional_special_tokens": [ME_TKN, YOU_TKN, SENT]}
+koGPT2_TOKENIZER.add_special_tokens(special_tokens_dict)
+
 print("test1")
 
-#최종 목표
-#(ME_TKN) + 사용자 데이터 + (SENT) + (YOU_TKN) + 상대방 데이터 + (EOS)
 
 class ChatDataset(Dataset):
-    def __init__(self, data, max_len=50):
+    def __init__(self, data, tokenizer, max_len=200):
         self.data = data
+        self.tokenizer = tokenizer
         self.max_len = max_len
 
         self.me_token = ME_TKN
@@ -50,94 +52,78 @@ class ChatDataset(Dataset):
         self.sent = SENT
         self.tokenizer = koGPT2_TOKENIZER
 
-    
     def __len__(self):
         return len(self.data)
-    
 
     def __getitem__(self, idx):
-        turn = self.data.iloc[idx]
-
-        me = turn["me"]
-        you = turn["you"]
-
-        me_t = self.tokenizer.tokenize(self.me_token + me + self.sent) #사용자 토큰화
-        me_len =len(me_t)
-
-        you_t = self.tokenizer.tokenize(self.you_token + you + self.eos) #챗봇 토근화
-        you_len = len(you_t)
-
-
-        #max 길이 초과에 따른 길이 재조정 필요
-        #길이 초과
-        total_len = me_len + you_len
-        if total_len > self.max_len:
-            you_len = self.max_len - me_len
-
-            #me 길이만으로 최대 길이 초과
-            if you_len <= 0:
-                me_t = me_t[-(int(self.max_len/2)):] #최대 길이 반으로
-                me_len = len(me_t)
-                you_len = self.max_len - me_len
-
-            you_t = you_t[:you_len]
-            you_len = len(you_t)
-
-        ###전체 대화 학습
-
-        #입력용
-        input = me_t + you_t 
-        input_ids = self.tokenizer.convert_tokens_to_ids(input) 
-        attention_mask = [1] * len(input_ids)
-
-        #학습용
-        labels = input_ids.copy()
-        
-        #패딩 추가
-        padding_len = self.max_len - len(input_ids)
-        if padding_len > 0:
-            input_ids += [self.tokenizer.pad_token_id] * padding_len
-            attention_mask += [0] * padding_len
-            labels += [-100] * padding_len
-
+        text = str(self.data.iloc[idx, 0])
+        encoding = self.tokenizer(
+            text,
+            truncation=True,
+            max_length=self.max_len,
+            padding="max_length",
+            return_tensors="pt",
+        )
+        input_ids = encoding["input_ids"].squeeze(0)
+        attention_mask = encoding["attention_mask"].squeeze(0)
+        labels = input_ids.clone()
+        labels[labels == self.tokenizer.pad_token_id] = -100  # loss 계산 제외
         return {
-            "input_ids": torch.tensor(input_ids),
-            "attention_mask": torch.tensor(attention_mask),
-            "labels": torch.tensor(labels),
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
         }
 
 
 #kogpt 모델
-dataname = "processed.csv"
-file_path = os.path.join(SAVE_DIR, 'processed.csv')
-Chatbot_data = pd.read_csv(file_path)
+# dataname = "processed.csv"
+# file_path = os.path.join(SAVE_DIR, 'processed.csv')
+# Chatbot_data = pd.read_csv(file_path)
+
+chat_data = pd.read_csv("/processed_data/processed.csv")  ###수정 필요
+dataset = ChatDataset(chat_data, koGPT2_TOKENIZER, max_len=200)
+
 
 print("test2")
 
 ####모델 만들기
-train_set = ChatDataset(Chatbot_data, max_len=50)
-
-#학습 배치 단위 설정 필요 (대화 단위로 묶기?)
 training_args = TrainingArguments(
-    output_dir="./trained_test",
-    num_train_epochs=3,
+    output_dir=os.path.join(save_dir, "trained_test"),
+    num_train_epochs=2,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=4,
-    save_total_limit=1,
-    fp16=torch.cuda.is_available(),
+    save_total_limit=2,
+    save_steps=1000,
+    logging_steps=200,
+    fp16=True,
+    report_to=[],
+    disable_tqdm=False,
+    learning_rate=5e-6,
 )
 
+
+# ===========================
+# 모델 로드 (1차 파인튜닝 모델)
+# ===========================
+###hugging face 설정
+repo_id = "louisan1128/chatanalysis"
+
+model = GPT2LMHeadModel.from_pretrained(repo_id)
+
+model.resize_token_embeddings(len(koGPT2_TOKENIZER))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = GPT2LMHeadModel.from_pretrained("skt/kogpt2-base-v2").to(device)
+model = model.to(device)
 
+# ===========================
+# Trainer 생성 및 학습
+# ===========================
 trainer = Trainer(
-    model = model,
-    args = training_args,
-    train_dataset=train_set
+    model=model,
+    args=training_args,
+    train_dataset=dataset,
 )
+
 
 trainer.train()
-
 model.save_pretrained("./trained_test")
-
 print("Model Saved At: ./trained_test")
