@@ -29,7 +29,7 @@ special_tokens = [ME_TKN, YOU_TKN, SENT]
 tokenizer.add_tokens(special_tokens)
 
 repo_id = "louisan1128/chatanalysis"
-model_path = "./trained_test"
+model_path = "../resources/finetuned"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = GPT2LMHeadModel.from_pretrained(model_path).to(device)
@@ -40,6 +40,7 @@ model.eval()
 # 챗봇 응답 생성 함수
 @app.post("/evaluate")
 def generate_response(req: ChatRequest, prompt, max_len=100, top_p=0.9, top_k=50):
+    intput_text = "f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
     output = model.generate(
@@ -54,7 +55,12 @@ def generate_response(req: ChatRequest, prompt, max_len=100, top_p=0.9, top_k=50
         repetition_penalty=1.5,
     )
 
-    return {"response": tokenizer.decode(output[0], skip_special_tokens=False)}
+    tokenizer.decode(output[0], skip_special_tokens=False)
+    
+    
+
+
+    return {"response": response}
 
 
 ### 예시

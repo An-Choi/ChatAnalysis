@@ -5,12 +5,13 @@ import re
 import pandas as pd
 import unicodedata
 import sys
+import csv
 
 processing_router = APIRouter()
 
 
-UPLOAD_DIR = "/app/uploads"
-SAVE_DIR = "/app/processed_data"
+UPLOAD_DIR = "/app/resources/uploads"
+SAVE_DIR = "/app/resources/processed"
 
 class ProcessRequest(BaseModel):
     filename: str

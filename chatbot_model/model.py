@@ -6,11 +6,6 @@ import os
 from tqdm import tqdm
 from transformers import PreTrainedTokenizerFast, GPT2LMHeadModel, Trainer, TrainingArguments 
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-SAVE_DIR = os.path.abspath(os.path.join(
-    CURRENT_DIR,
-    "../../../../../resources/processed_data"
-))
 
 ME_TKN = "<me>" #user
 YOU_TKN = "<you>" #bot
@@ -20,7 +15,7 @@ MASK = "<mask>"
 SENT = "<sent>" #문장 구분
 PAD = "<pad>" #패딩
 
-save_dir = "saved_models"
+save_dir = "/app/resorces/finetuned"
 os.makedirs(save_dir, exist_ok=True)
 
 #kogpt 토크나이저
@@ -80,7 +75,7 @@ class ChatDataset(Dataset):
 # file_path = os.path.join(SAVE_DIR, 'processed.csv')
 # Chatbot_data = pd.read_csv(file_path)
 
-chat_data = pd.read_csv("/processed_data/processed.csv")  ###수정 필요
+chat_data = pd.read_csv("/resources/processed")  ###수정 필요
 dataset = ChatDataset(chat_data, koGPT2_TOKENIZER, max_len=200)
 
 
@@ -125,5 +120,5 @@ trainer = Trainer(
 
 
 trainer.train()
-model.save_pretrained("./trained_test")
-print("Model Saved At: ./trained_test")
+model.save_pretrained("../resources/finetuned")
+print("Model Saved At: ../resources/finetuned")
