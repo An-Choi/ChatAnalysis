@@ -164,19 +164,12 @@ def process_file(req: ProcessRequest):
     try:
         filename = req.filename
         file_path = os.path.join(UPLOAD_DIR, filename)
+        
         print(f"전처리 요청: {file_path}")
-        processed = []
 
-        if filename.endswith('.txt'):
-            processing_text_file(file_path, processed)
-        elif filename.endswith('.csv'):
-            processing_csv_file(file_path, processed)
-        else:
-            return {"status":"error", "message":"지원하지 않는 파일 형식"}
-
-        df = pd.DataFrame(processed)
+        #os.makedirs(SAVE_DIR, exist_ok=True) 
         out_file = os.path.join(SAVE_DIR, 'processed.csv')
-        df.to_csv(out_file, index=False)
+        processing_text_file(file_path, out_file)
 
         return {"status": "success", "output": out_file}
     except Exception as e:

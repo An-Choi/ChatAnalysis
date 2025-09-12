@@ -15,8 +15,13 @@ MASK = "<mask>"
 SENT = "<sent>" #문장 구분
 PAD = "<pad>" #패딩
 
-save_dir = "/app/resorces/finetuned"
-os.makedirs(save_dir, exist_ok=True)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+save_dir = os.path.abspath(os.path.join(
+    CURRENT_DIR,
+    "../resources/finetuned"
+))
+#save_dir = "/resources/finetuned"
+#os.makedirs(save_dir, exist_ok=True)
 
 #kogpt 토크나이저
 koGPT2_TOKENIZER = PreTrainedTokenizerFast.from_pretrained(
@@ -74,8 +79,11 @@ class ChatDataset(Dataset):
 # dataname = "processed.csv"
 # file_path = os.path.join(SAVE_DIR, 'processed.csv')
 # Chatbot_data = pd.read_csv(file_path)
-
-chat_data = pd.read_csv("/resources/processed")  ###수정 필요
+asdf = os.path.abspath(os.path.join(
+    CURRENT_DIR,
+    "../resources/processed/processed.csv"
+))
+chat_data = pd.read_csv(asdf)  ###수정 필요
 dataset = ChatDataset(chat_data, koGPT2_TOKENIZER, max_len=200)
 
 

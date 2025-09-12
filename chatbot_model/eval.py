@@ -40,7 +40,7 @@ model.eval()
 # 챗봇 응답 생성 함수
 @app.post("/evaluate")
 def generate_response(req: ChatRequest, prompt, max_len=100, top_p=0.9, top_k=50):
-    intput_text = "f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
+    input_text = f"{ME_TKN}{req.message}{SENT}{YOU_TKN}"
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
     output = model.generate(
