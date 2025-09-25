@@ -83,13 +83,9 @@ def processing_text_file(txt_path, csv_path):
 
 
 ##csv파일 전처리
-def processing_csv_file(file_path, processed):
+def processing_csv_file(file_path, csv_path):
     ##파일 읽기
     df = pd.read_csv(file_path)
-
-    ##초 단위 제거
-    df['Date'] = pd.to_datetime(df['Date'])
-    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d %H:%M')
 
     ##파일 이름에서 학습 대상 이름 추출
     ##한글 비교 시 유니코드 정규화 통일 후 비교
@@ -102,37 +98,54 @@ def processing_csv_file(file_path, processed):
             target = user
             break
     
-    ##한 사용자가 연속으로 메세지를 보낸 경우 하나의 row로 처리
-    ##processed 안에 dictionary 형식으로 저장
-    current_user = None
-    current_message = ""
-    current_date = ""
+    dialogues = []
+    last_speaker = None
+    buffer = ""
 
-    for index, row in df.iterrows():
-        if current_user is None:
-            current_date = row['Date']
-            current_user = row['User']
-            current_message += row['Message']
-        elif current_user != row['User']:
-            processed.append({
-                "sender": current_user,
-                "message": current_message,
-                "time": current_date,
-                "trainer": current_user != target
-            })
-            current_date = row['Date']
-            current_user = row['User']
-            current_message = row['Message']
+    for _, row in df.iterrows():
+        speaker = row['User']
+        message = str(row['Message']).strip()
+        current = "<me>" if speaker == target else "<you>"
+
+        if last_speaker == current:
+            buffer += " " + message
         else:
-            current_message += "\n" + row['Message']
+            if buffer:
+                dialogues.append((last_speaker, buffer))
 
-    if current_user is not None:
-        processed.append({
-                "sender": current_user,
-                "message": current_message,
-                "time": current_date,
-                "trainer": current_user != target
-            })
+            buffer = message
+            last_speaker = current
+
+    if buffer:
+        dialogues.append((last_speaker, buffer))
+
+    if dialogues and dialogues[0][0] == "<you>":
+        dialogues.pop(0)
+
+    conversations = []
+    temp_me = ""
+    temp_you = ""
+
+    for speaker, msg in dialogues:
+        if speaker == "<me>":
+            if temp_me and temp_you:
+                conversations.append(f"<me>{temp_me}<sent><you>{temp_you}<s>")
+                temp_me = msg
+                temp_you = ""
+            else:
+                temp_me += (" " + msg) if temp_me else msg
+        else:
+            temp_you += (" " + msg) if temp_you else msg
+
+    if temp_me:
+        conversations.append(f"<me>{temp_me}<sent><you>{temp_you if temp_you else '다음대화'}<s>")
+    
+    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["conversation"])
+        for conv in conversations:
+            writer.writerow([conv])
+
 
 ##실행 함수
 def execute_files(filename):
@@ -169,30 +182,18 @@ def process_file(req: ProcessRequest):
 
         #os.makedirs(SAVE_DIR, exist_ok=True) 
         out_file = os.path.join(SAVE_DIR, 'processed.csv')
-        processing_text_file(file_path, out_file)
+
+        type = os.path.splitext(filename)[1].lower()
+
+        if type == '.txt':
+            processing_text_file(file_path, out_file)
+        elif type == '.csv':
+            processing_csv_file(file_path, out_file)
+        else:
+            print("지원하지 않는 형식입니다.\n txt파일 혹은 csv파일을 업로드 해주세요")
 
         return {"status": "success", "output": out_file}
     except Exception as e:
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
-    # filename = req.filename
-    # results = execute_files(filename)
-
-    # if not results[0]["trainer"]:
-    #     results = results[1:]
-
-    # me_messages = [result["message"] for result in results if result["trainer"]]
-    # you_messages = [result["message"] for result in results if not result["trainer"]]
-
-    # min_len = min(len(me_messages), len(you_messages))
-    # pairs = {
-    #     "me": me_messages[:min_len],
-    #     "you": you_messages[:min_len]
-    # }
-
-    # df = pd.DataFrame(pairs)
-    # out_file = os.path.join(SAVE_DIR, 'processed.csv')
-    # df.to_csv(out_file, index=False)
-
-    # return {"status": "success", "output": out_file}
