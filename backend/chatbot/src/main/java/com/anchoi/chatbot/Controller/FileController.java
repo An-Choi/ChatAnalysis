@@ -21,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/files")
 public class FileController {
-    private static final String UPLOAD_DIR = "/app/uploads/";
+    private static final String UPLOAD_DIR = "/app/resources/uploads/";
     private static final String PYTHON_URL = "http://python-server:8000";
 
     @PostMapping("/upload")

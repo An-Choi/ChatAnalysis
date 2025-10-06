@@ -1,15 +1,15 @@
 version: '3.8'
 
 services:
-  # React 프론트엔드
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    environment:
-      - REACT_APP_API_URL=http://localhost:8080
+  # # React 프론트엔드
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:8080
 
   # Spring Boot 백엔드
   backend:
@@ -34,8 +34,7 @@ services:
     volumes:
       - ./resources/uploads:/app/resources/uploads
       - ./resources/processed:/app/resources/processed
-      - ./resources/finetuned:/app/resources/finetuned
-
+      - ./resources/finetuned/:/app/resources/finetuned
   # Nginx (선택사항 - 리버스 프록시용)
   # nginx:
   #   image: nginx:alpine

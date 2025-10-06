@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, BackgroundTasks
 from pydantic import BaseModel
 import os
 import re
@@ -6,6 +6,7 @@ import pandas as pd
 import unicodedata
 import sys
 import csv
+import subprocess
 
 processing_router = APIRouter()
 
@@ -146,33 +147,23 @@ def processing_csv_file(file_path, csv_path):
         for conv in conversations:
             writer.writerow([conv])
 
-
-##실행 함수
-def execute_files(filename):
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    print(file_path)
-    processed = []
-
-    #파일 없는 경우 (오류 처리)
-    if not os.path.isfile(file_path):
-        print("파일이 없습니다")
-        return
-    
-    #파일 타입
-    type = os.path.splitext(filename)[1].lower()
-
-    ##json 파일로 return
-    if type == '.txt':
-        processing_text_file(file_path, processed)
-    elif type == '.csv':
-        processing_csv_file(file_path, processed)
-    else:
-        print("지원하지 않는 형식입니다.\n txt파일 혹은 csv파일을 업로드 해주세요")
-
-    return processed
+def run_model_training(processed_csv_path: str):
+    print("모델 학습 시작")
+    model_script_path = os.path.join(os.path.dirname(__file__), "model.py")
+    try:
+        subprocess.run(
+            [sys.executable, model_script_path, "--csv_file_path", processed_csv_path],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print("모델 학습 완료")
+    except subprocess.CalledProcessError as e:
+        print("모델 학습 중 오류 발생:")
+        print(e.stderr)
 
 @processing_router.post("/process")
-def process_file(req: ProcessRequest):
+def process_file(req: ProcessRequest, background_tasks: BackgroundTasks):
     print("process called!") 
     try:
         filename = req.filename
@@ -190,9 +181,11 @@ def process_file(req: ProcessRequest):
         elif type == '.csv':
             processing_csv_file(file_path, out_file)
         else:
-            print("지원하지 않는 형식입니다.\n txt파일 혹은 csv파일을 업로드 해주세요")
+            return {"status": "error", "message": "지원하지 않는 파일 형식입니다."}
 
-        return {"status": "success", "output": out_file}
+        background_tasks.add_task(run_model_training, out_file)
+
+        return {"status": "success", "message": "파일 전처리가 완료되었습니다. 모델 학습이 백그라운드에서 진행됩니다.", "output": out_file}
     except Exception as e:
         import traceback
         traceback.print_exc()
