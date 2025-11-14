@@ -1,5 +1,7 @@
 from fastapi import FastAPI, APIRouter, BackgroundTasks
 from pydantic import BaseModel
+import requests
+import uuid
 import os
 import re
 import pandas as pd
@@ -16,6 +18,10 @@ SAVE_DIR = "/app/resources/processed"
 
 class ProcessRequest(BaseModel):
     filename: str
+    jobId: str
+    originalFilename: str
+
+SPRING_CALLBACK_URL = "http://backend:8080/api/v1/files/complete"
 
 ##텍스트 파일 전처리
 def processing_text_file(txt_path, csv_path):
@@ -84,13 +90,14 @@ def processing_text_file(txt_path, csv_path):
 
 
 ##csv파일 전처리
-def processing_csv_file(file_path, csv_path):
+def processing_csv_file(file_path, csv_path, original_filename):
     ##파일 읽기
     df = pd.read_csv(file_path)
 
     ##파일 이름에서 학습 대상 이름 추출
     ##한글 비교 시 유니코드 정규화 통일 후 비교
-    filename = os.path.splitext(os.path.basename(file_path))[0]
+    # filename = os.path.splitext(os.path.basename(file_path))[0]
+    filename = os.path.splitext(original_filename)[0]
     filename_nfc = unicodedata.normalize('NFC', filename)
     users = df['User'].astype(str).str.strip().apply(lambda x: unicodedata.normalize('NFC', x))
     target = None
@@ -147,20 +154,28 @@ def processing_csv_file(file_path, csv_path):
         for conv in conversations:
             writer.writerow([conv])
 
-def run_model_training(processed_csv_path: str):
-    print("모델 학습 시작")
-    model_script_path = os.path.join(os.path.dirname(__file__), "model.py")
+def run_model_training(processed_csv_path: str, job_id: str):
+    status = "COMPLETED"
     try:
+        print("모델 학습 시작")
+        model_script_path = os.path.join(os.path.dirname(__file__), "model.py")
         subprocess.run(
             [sys.executable, model_script_path, "--csv_file_path", processed_csv_path],
             check=True,
             capture_output=True,
             text=True
         )
-        print("모델 학습 완료")
+        print(f"[{job_id}] 모델 학습 완료")
     except subprocess.CalledProcessError as e:
-        print("모델 학습 중 오류 발생:")
+        print(f"[{job_id}] 모델 학습 중 오류 발생:")
         print(e.stderr)
+        status = "FAILED"
+    finally:
+        try:
+            print(f"[{job_id}] Spring 서버에 상태 업데이트: {status}")
+            requests.post(SPRING_CALLBACK_URL, json={"jobId": job_id, "status": status})
+        except Exception as e:
+            print(f"[{job_id}] Spring 콜백 실패: {e}")
 
 @processing_router.post("/process")
 def process_file(req: ProcessRequest, background_tasks: BackgroundTasks):
@@ -168,7 +183,8 @@ def process_file(req: ProcessRequest, background_tasks: BackgroundTasks):
     try:
         filename = req.filename
         file_path = os.path.join(UPLOAD_DIR, filename)
-        
+        original_filename = req.originalFilename
+
         print(f"전처리 요청: {file_path}")
 
         #os.makedirs(SAVE_DIR, exist_ok=True) 
@@ -179,13 +195,13 @@ def process_file(req: ProcessRequest, background_tasks: BackgroundTasks):
         if type == '.txt':
             processing_text_file(file_path, out_file)
         elif type == '.csv':
-            processing_csv_file(file_path, out_file)
+            processing_csv_file(file_path, out_file, original_filename)
         else:
             return {"status": "error", "message": "지원하지 않는 파일 형식입니다."}
 
-        background_tasks.add_task(run_model_training, out_file)
+        background_tasks.add_task(run_model_training, out_file, req.jobId)
 
-        return {"status": "success", "message": "파일 전처리가 완료되었습니다. 모델 학습이 백그라운드에서 진행됩니다.", "output": out_file}
+        return {"status": "success", "jobId": req.jobId}
     except Exception as e:
         import traceback
         traceback.print_exc()
