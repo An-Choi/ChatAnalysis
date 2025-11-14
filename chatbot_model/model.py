@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import os
 from tqdm import tqdm
 from transformers import PreTrainedTokenizerFast, GPT2LMHeadModel, Trainer, TrainingArguments 
+import argparse
 
 
 ME_TKN = "<me>" #user
@@ -15,8 +16,13 @@ MASK = "<mask>"
 SENT = "<sent>" #문장 구분
 PAD = "<pad>" #패딩
 
-save_dir = "/app/resorces/finetuned"
-os.makedirs(save_dir, exist_ok=True)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+save_dir = os.path.abspath(os.path.join(
+    CURRENT_DIR,
+    "../resources/finetuned"
+))
+#save_dir = "/resources/finetuned"
+#os.makedirs(save_dir, exist_ok=True)
 
 #kogpt 토크나이저
 koGPT2_TOKENIZER = PreTrainedTokenizerFast.from_pretrained(
@@ -70,55 +76,65 @@ class ChatDataset(Dataset):
         }
 
 
-#kogpt 모델
-# dataname = "processed.csv"
-# file_path = os.path.join(SAVE_DIR, 'processed.csv')
-# Chatbot_data = pd.read_csv(file_path)
+def train_model(csv_file_path : str):
+    #kogpt 모델
+    # asdf = os.path.abspath(os.path.join(
+    #     CURRENT_DIR,
+    #     "../resources/processed/processed.csv"
+    # ))
+    # processed_path = "/app/resources/processed/processed.csv"
+    chat_data = pd.read_csv(csv_file_path)  ###수정 필요
+    dataset = ChatDataset(chat_data, koGPT2_TOKENIZER, max_len=200)
 
+<<<<<<< HEAD
 chat_data = pd.read_csv("/resources/processed.csv")  ###수정 필요
 dataset = ChatDataset(chat_data, koGPT2_TOKENIZER, max_len=200)
+=======
+    print("test2")
+>>>>>>> 10d4afe2928772630d6d4453153f50a27a963ead
 
+    ####모델 만들기
+    training_args = TrainingArguments(
+        output_dir=os.path.join(save_dir, "trained_test"),
+        num_train_epochs=2,
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=4,
+        save_total_limit=2,
+        save_steps=1000,
+        logging_steps=200,
+        fp16=False,
+        report_to=[],
+        disable_tqdm=False,
+        learning_rate=5e-6,
+    )
 
-print("test2")
+    # ===========================
+    # 모델 로드 (1차 파인튜닝 모델)
+    # ===========================
+    ###hugging face 설정
+    repo_id = "louisan1128/chatanalysis"
 
-####모델 만들기
-training_args = TrainingArguments(
-    output_dir=os.path.join(save_dir, "trained_test"),
-    num_train_epochs=2,
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=4,
-    save_total_limit=2,
-    save_steps=1000,
-    logging_steps=200,
-    fp16=True,
-    report_to=[],
-    disable_tqdm=False,
-    learning_rate=5e-6,
-)
+    model = GPT2LMHeadModel.from_pretrained(repo_id)
 
+    model.resize_token_embeddings(len(koGPT2_TOKENIZER))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
-# ===========================
-# 모델 로드 (1차 파인튜닝 모델)
-# ===========================
-###hugging face 설정
-repo_id = "louisan1128/chatanalysis"
+    # ===========================
+    # Trainer 생성 및 학습
+    # ===========================
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=dataset,
+    )
 
-model = GPT2LMHeadModel.from_pretrained(repo_id)
+    trainer.train()
+    model.save_pretrained("/app/resources/finetuned")
+    print("Model Saved At: app/resources/finetuned")
 
-model.resize_token_embeddings(len(koGPT2_TOKENIZER))
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)
-
-# ===========================
-# Trainer 생성 및 학습
-# ===========================
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=dataset,
-)
-
-
-trainer.train()
-model.save_pretrained("../resources/finetuned")
-print("Model Saved At: ../resources/finetuned")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--csv_file_path", type=str, required=True, help="학습될 csv 파일 경로")
+    args = parser.parse_args()
+    train_model(args.csv_file_path)
