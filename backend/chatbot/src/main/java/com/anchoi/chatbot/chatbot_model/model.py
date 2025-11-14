@@ -6,12 +6,6 @@ import os
 from tqdm import tqdm
 from transformers import PreTrainedTokenizerFast, GPT2LMHeadModel, Trainer, TrainingArguments 
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-SAVE_DIR = os.path.abspath(os.path.join(
-    CURRENT_DIR,
-    "../../../../../resources/processed_data"
-))
-
 ME_TKN = "<me>" #user
 YOU_TKN = "<you>" #bot
 BOS = "</s>" #begin sentence
@@ -108,9 +102,8 @@ class ChatDataset(Dataset):
 
 
 #kogpt 모델
-dataname = "processed.csv"
-file_path = os.path.join(SAVE_DIR, 'processed.csv')
-Chatbot_data = pd.read_csv(file_path)
+dataname = "makedata.csv"
+Chatbot_data = pd.read_csv("./" + dataname)
 
 print("test2")
 
