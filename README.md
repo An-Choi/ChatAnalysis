@@ -87,4 +87,5 @@ python train.py
 
 # 👥 Contributors
 안승환:	AI 모델 개발 · 데이터 전처리 · KoGPT2 Fine-tuning
+
 최병주:	Backend 개발(Spring Boot) · API 구축 · 서비스 연동
