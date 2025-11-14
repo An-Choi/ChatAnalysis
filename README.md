@@ -25,11 +25,13 @@ ChatAnalysis는 카카오톡 대화 데이터를 기반으로
 ---
 
 ## 🏗 프로젝트 구조  
+```bash
 ChatAnalysis/
 ├── backend/ #Spring Boot 백엔드
 ├── chatbot_model/ #AI 모델(Fine-tuning, 추론)
 ├── frontend/ # 웹 프론트엔드
 └── uploads/ # 업로드된 카카오톡 대화 파일
+```
 
 ## ⚙️ 기술 스택  
 ### 🔹 AI / ML 
