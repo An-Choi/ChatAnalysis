@@ -39,8 +39,8 @@ model.eval()
 
 # 챗봇 응답 생성 함수
 @app.post("/evaluate")
-def generate_response(req: ChatRequest, prompt, max_len=100, top_p=0.9, top_k=50):
-    intput_text = "f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
+def generate_response(req: ChatRequest, max_len=100, top_p=0.9, top_k=50):
+    prompt = f"{ME_TKN}{req.message}{SENT}{YOU_TKN}"
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
 
     output = model.generate(
@@ -55,24 +55,28 @@ def generate_response(req: ChatRequest, prompt, max_len=100, top_p=0.9, top_k=50
         repetition_penalty=1.5,
     )
 
-    tokenizer.decode(output[0], skip_special_tokens=False)
-    
-    
+    response = tokenizer.decode(output[0], skip_special_tokens=False)
 
+    you_index = response.find(YOU_TKN)
+    if you_index != -1:
+        response = response[you_index + len(YOU_TKN):]
+
+    for tok in [ME_TKN, YOU_TKN, SENT, PAD, MASK, EOS]:
+        response = response.replace(tok, "")
 
     return {"response": response}
 
 
 ### 예시
 if __name__ == "__main__":
-    print("🤖 KoGPT2 챗봇 (단발성 대화) 시작! (종료하려면 'quit' 입력)")
+    # print("🤖 KoGPT2 챗봇 (단발성 대화) 시작! (종료하려면 'quit' 입력)")
 
-    while True:
-        user_input = input("👤 You: ")
-        if user_input.lower() in ["quit", "exit", "종료"]:
-            print("대화를 종료합니다.")
-            break
+    # while True:
+    #     user_input = input("👤 You: ")
+    #     if user_input.lower() in ["quit", "exit", "종료"]:
+    #         print("대화를 종료합니다.")
+    #         break
         
-        user_input = f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
-        answer = generate_response(user_input)
-        print(f"🤖 Bot:{answer}")
+    #     user_input = f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
+    #     answer = generate_response(user_input)
+    #     print(f"🤖 Bot:{answer}")

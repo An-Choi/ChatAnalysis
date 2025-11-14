@@ -75,7 +75,7 @@ class ChatDataset(Dataset):
 # file_path = os.path.join(SAVE_DIR, 'processed.csv')
 # Chatbot_data = pd.read_csv(file_path)
 
-chat_data = pd.read_csv("/resources/processed")  ###수정 필요
+chat_data = pd.read_csv("/resources/processed.csv")  ###수정 필요
 dataset = ChatDataset(chat_data, koGPT2_TOKENIZER, max_len=200)
 
 
