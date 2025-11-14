@@ -1,0 +1,39 @@
+/* 전체 로딩 컨테이너 스타일 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: #e3f2fd; /* 기존 페이지와 유사한 배경색 */
+  text-align: center;
+}
+
+/* 회전하는 스피너 애니메이션 */
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 8px solid rgba(0, 0, 0, 0.1); /* 옅은 회색 테두리 */
+  border-left-color: #4a90e2; /* 파란색으로 강조 */
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite; /* 애니메이션 적용 */
+  margin-bottom: 20px;
+}
+
+/* p 태그에 대한 스타일 (상태 메시지) */
+.loading-container p {
+  font-size: 1.1rem;
+  color: #333;
+  font-weight: 500;
+}
+
+/* 스피너 회전을 위한 키프레임 정의 */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
