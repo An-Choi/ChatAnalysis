@@ -6,6 +6,19 @@ import os
 
 processing_router1 = APIRouter()
 
+MAX_TURNS = 3 #저장되는 최대 대화 턴
+history = [] #대화 턴 저장
+
+
+def build_prompt(user_message: str) -> str:
+    prompt= []
+    for m, u in history[-MAX_TURNS:] :
+        prompt.append(f"{ME_TKN}{m}{SENT}{YOU_TKN}{u}{SENT}")
+
+    prompt.append(f"{ME_TKN}{user_message}{SENT}{YOU_TKN}")
+
+    return "".join(prompt)
+
 class ChatRequest(BaseModel):
     message: str
 
@@ -42,7 +55,7 @@ model = None
 # 챗봇 응답 생성 함수
 @processing_router1.post("/evaluate")
 def generate_response(req: ChatRequest, max_len=100, top_p=0.9, top_k=50):
-    global model
+    global model, history
     if model is None:
         print("모델이 아직 로드되지 않았습니다.")
         required_files = ['config.json']
@@ -65,7 +78,9 @@ def generate_response(req: ChatRequest, max_len=100, top_p=0.9, top_k=50):
             )
         
     print(req.message)
-    input_text = f"{ME_TKN}{req.message}{SENT}{YOU_TKN}"
+
+
+    input_text = build_prompt(req.message)
     input_ids = tokenizer.encode(input_text, return_tensors="pt").to(device)
 
     output = model.generate(
@@ -80,29 +95,29 @@ def generate_response(req: ChatRequest, max_len=100, top_p=0.9, top_k=50):
         repetition_penalty=1.5,
     )
 
-    response = tokenizer.decode(output[0], skip_special_tokens=False)
+    decoded = tokenizer.decode(output[0], skip_special_tokens=False)
     
-    you_index = response.find(YOU_TKN)
-    if you_index != -1:
-        response = response[you_index + len(YOU_TKN):]
+    ##마지막 you token 찾기
+    last_you = decoded.rfind(YOU_TKN)
+    if last_you == -1:
+        response = decoded  # fallback
+    else:
+        response = decoded[last_you + len(YOU_TKN):]
 
+    #eos 앞 자르기
+    eos_pos = response.find(EOS)
+    if eos_pos != -1:
+        response = response[:eos_pos]
+
+    ##토큰 제거
     for tok in [ME_TKN, YOU_TKN, SENT, PAD, MASK, EOS]:
         response = response.replace(tok, "")
 
 
+    ##history max turn까지 유지
+    history.append((req.message, response))
+    if len(history) > MAX_TURNS:
+        history = history[-MAX_TURNS:]
+
     return {"response": response}
 
-
-### 예시
-# if __name__ == "__main__":
-#     print("🤖 KoGPT2 챗봇 (단발성 대화) 시작! (종료하려면 'quit' 입력)")
-
-#     while True:
-#         user_input = input("👤 You: ")
-#         if user_input.lower() in ["quit", "exit", "종료"]:
-#             print("대화를 종료합니다.")
-#             break
-        
-#         user_input = f"{ME_TKN}{user_input}{SENT}{YOU_TKN}"
-#         answer = generate_response(user_input)
-#         print(f"🤖 Bot:{answer}")
